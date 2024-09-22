@@ -1,12 +1,12 @@
+using System.Diagnostics;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace WebApplication1;
 
 
-public interface IService<TParam, TResult>
-{
-    ValueTask<TResult> ExecuteAsync(TParam query);
-}
+
 
 
 public class EndpointFilter : IEndpointFilter
@@ -15,9 +15,21 @@ public class EndpointFilter : IEndpointFilter
     {
         var ret = await next(context);
 
+        if (ret is IValueHttpResult v )
+        {
+            var node = JsonSerializer.SerializeToNode(v.Value)!;
+
+            if (node is JsonObject vv)
+            {
+                vv["traceId"] = Activity.Current?.Id;
+            }
+
+            return Results.Text(node.ToJsonString(), "application/json", statusCode: ((IStatusCodeHttpResult)ret).StatusCode);
+        }
+
         return ret switch
         {
-            IValueHttpResult _ => Results.Ok(),
+            
             _ => ret switch
             {
                 Ok => ret,

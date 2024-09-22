@@ -13,29 +13,26 @@ builder.Services.AddMediatR(config =>
     config.RegisterServicesFromAssemblies(typeof(Ping).Assembly);
 });
 
-builder.Services.AddOpenTelemetry().WithTracing(tcb =>
+builder.Services.AddOpenTelemetry().WithTracing(config =>
 {
-    tcb.AddSource(serviceName)
-    .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: serviceName, serviceVersion: serviceVersion))
-    .AddAspNetCoreInstrumentation()
-    .AddConsoleExporter();
+    config.AddSource(serviceName)
+          .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: serviceName, serviceVersion: serviceVersion))
+          .AddAspNetCoreInstrumentation()
+          .AddConsoleExporter();
 });
 
 var app = builder.Build();
 
 
-app.MapGet("/", (HttpContext ctx) =>
+app.MapGet("/", (HttpContext ctx) => TypedResults.Ok(new
 {
-    return TypedResults.Ok(new
-    {
-        Hello = "World"
-    });
-}).AddEndpointFilter<EndpointFilter>();
+    Hello = "World"
+})).AddEndpointFilter<EndpointFilter>();
 
 
-app.MapGet("/ping", async ([FromServices] IMediator ctx) =>
+app.MapGet("/ping", async (HttpContext ctx, [FromServices] IMediator mediator) =>
 {
-    var result = await ctx.Send(new Ping());
+    var result = await mediator.Send(new Ping());
     return TypedResults.Ok(result);
 });
 
